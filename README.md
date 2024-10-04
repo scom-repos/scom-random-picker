@@ -1,21 +1,25 @@
-## Step 1: Install packages
+# Setup and Installation for Local Testing
+To get started with testing locally, follow these steps:
+
+#### 1: Install the required packages using the following command:
+
 ```sh
 docker-compose up install
 ```
-## Step 2: Build and bundle library
+
+#### 2: Build and bundle the library using the following command:
+
 ```sh
 docker-compose up build
 ```
 
-## For test
-## Step 3: Install packages
-```sh
-docker-compose up installTest
-```
+#### 3. Run a development server using the following command:
 
-## Step 4: Build and bundle library
 ```sh
 docker-compose up test
 ```
 
-Access the dev server via http://127.0.0.1:80XX/
+Access the development server via http://127.0.0.1:8037/.
+
+### Note
+In order to test the scanner on mobile devices, start the development server with https instead of http.
