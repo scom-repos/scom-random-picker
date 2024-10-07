@@ -9,6 +9,7 @@ export interface IItem {
   icon?: string;
   weight?: number;
 }
+
 export interface IWheelPickerData {
   title?: string;
   items: IItem[];
@@ -42,7 +43,7 @@ export class Model {
   }
 
   get totalWeight() {
-    const totalWeight = this.items.reduce((total, item) => total + (item.weight || 1), 0);
+    const totalWeight = this.items.reduce((total, item) => total + item.weight, 0);
     return totalWeight;
   }
 
@@ -85,7 +86,12 @@ export class Model {
   async setData(value: IWheelPickerData) {
     this._data = value;
     const array = value?.items || [];
-    this._items = [...array];
+    this._items = [...array].map(v => {
+      return {
+        ...v,
+        weight: v.weight || 1
+      }
+    });
     this.renderWheelPicker();
   }
 
@@ -148,27 +154,38 @@ export class Model {
     let cumulativeWeight = 0;
     let chosenItem: IItem;
     for (const item of this.items) {
-      cumulativeWeight += (item.weight || 1);
+      cumulativeWeight += item.weight;
       if (randomNum <= cumulativeWeight) {
         chosenItem = item;
         break;
       }
     }
     this._currentItem = chosenItem;
-
+    const weight = chosenItem.weight;
     let rounded = 0;
     if (this.currentDeg) {
       rounded = 360 - (this.currentDeg % 360);
     }
-    const baseDeg = 360 * 5 + 90 + 360 * this.items.indexOf(chosenItem) / this.items.length;
-    const randomDeg = (Math.random() - 0.5) * (360 / this.items.length) * (1 - this.items.length * 0.01); // Prevent the arrow from pointing directly at the intersection point between the items
-    const resultDeg = baseDeg + randomDeg;
+    const degPerPart = 360 / this.totalWeight;
+    const idx = this.items.indexOf(chosenItem);
+    let adjustedDeg = 0;
+    if (idx !== 0) {
+      const halfDegPerPart = degPerPart / 2;
+      const addedDeg = halfDegPerPart * (weight - 1);
+      const removedDeg = halfDegPerPart * (this.items[0].weight - 1);
+      adjustedDeg = addedDeg - removedDeg;
+    }
+    const startWeight = (idx > 0) ? this.items.slice(0, idx).reduce((acc, val) => acc + val.weight, 0) : 0;
+    const baseDeg = 90 + 360 * 5 + adjustedDeg + (degPerPart * startWeight);
+    const randomDeg = (Math.random() - 0.5) * (degPerPart * weight);
+    // Prevent the arrow from pointing directly at the intersection point between the items
+    const finalRandomDeg = randomDeg > 0 ? randomDeg - 1 : randomDeg + 1;
+    const resultDeg = baseDeg + finalRandomDeg;
     this.currentDeg += resultDeg;
     const finalDeg = rounded + this.currentDeg;
-
     return {
       item: chosenItem,
       deg: finalDeg
-    };
+    }
   }
 }

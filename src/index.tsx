@@ -14,6 +14,7 @@ import {
 import { colors, IItem, Model } from './model';
 import { itemStyle, markerStyle, spinActionStyle, textCenterStyle, wheelStyle } from './index.css';
 const Theme = Styles.Theme.ThemeVars;
+const MAX_HEIGHT = 1000;
 
 interface ScomRandomPickerElement extends ControlElement {
     title?: string;
@@ -100,9 +101,12 @@ export default class ScomRandomPicker extends Module {
         const length = this.items.length;
         if (length > 1) {
             const nodeItems: HTMLElement[] = [];
-            const degPerPart = 360 / length;
+            const degPerPart = 360 / this.model.totalWeight;
+            let removedDeg = 0;
             for (let i = 0; i < length; i++) {
-                const item = this.items[i];
+                const { name, weight, icon } = this.items[i];
+                const _weight = (weight || 1);
+                const deg = degPerPart * _weight;
                 const pnl = new Panel();
                 pnl.classList.add(itemStyle);
                 let itemColor = colors[i % colors.length];
@@ -117,26 +121,37 @@ export default class ScomRandomPicker extends Module {
                     height: '100%',
                     padding: { right: '40px', left: '5%' }
                 });
-                if (item.icon) {
+                if (icon) {
                     new Image(stack, {
                         width: '32px',
                         maxWidth: '50%',
                         height: 'auto',
-                        url: item.icon
+                        url: icon
                     });
                 }
                 new Label(stack, {
-                    caption: item.name,
+                    caption: name,
                     overflow: 'hidden'
                 });
-                if (length === 2) {
+                if (length === 2 && this.items[0].weight === this.items[1].weight) {
                     pnl.height = '100%';
-                    pnl.style.transform = 'rotate(' + (i * degPerPart) + 'deg)';
+                    pnl.style.transform = 'rotate(' + (i * deg) + 'deg)';
                 } else {
-                    pnl.height = Math.tan((degPerPart / 2) * Math.PI / 180) * 100 + '%';
+                    const addedDeg = i === 0 ? 0 : (degPerPart / 2) * (1 - _weight);
+                    const height = Math.tan((deg / 2) * Math.PI / 180) * 100;
+                    if (height > MAX_HEIGHT || height < 0) {
+                        pnl.height = MAX_HEIGHT + '%';
+                        pnl.width = '100%';
+                        pnl.zIndex = 0;
+                        pnl.style.transformOrigin = 'center';
+                    } else {
+                        pnl.height = height + '%';
+                    }
                     pnl.top = '50%';
-                    pnl.style.transform = 'translateY(-50%) rotate(' + (i * degPerPart * -1) + 'deg)';
+                    pnl.style.transform = 'translateY(-50%) rotate(' + (addedDeg - (i * degPerPart) - removedDeg) + 'deg)';
                     pnl.style.clipPath = 'polygon(0 0, 0 100%, 100% 50%)';
+                    const degPerWeight = i === 0 ? degPerPart / 2 : degPerPart;
+                    removedDeg = removedDeg + ((_weight - 1) * degPerWeight);
                 }
                 nodeItems.push(pnl);
             }
