@@ -15,7 +15,7 @@ export default {
                 items: {
                     type: 'object',
                     properties: {
-                        value: {
+                        name: {
                             type: 'string',
                             required: true
                         },
@@ -23,6 +23,11 @@ export default {
                             type: 'string',
                             format: 'data-url',
                             title: 'Prize icon'
+                        },
+                        weight: {
+                            type: 'number',
+                            default: 1,
+                            minimum: 1
                         }
                     }
                 }

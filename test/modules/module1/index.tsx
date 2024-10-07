@@ -54,16 +54,20 @@ export default class Module1 extends Module {
                     items={
                         [
                             {
-                                value: 'OSWAP'
+                                name: 'OSWAP',
+                                weight: 1
                             },
                             {
-                                value: 'USDT'
+                                name: 'USDT',
+                                weight: 2
                             },
                             {
-                                value: 'BUSD'
+                                name: 'BUSD',
+                                weight: 1
                             },
                             {
-                                value: 'IF'
+                                name: 'IF',
+                                weight: 1
                             }
                         ]
                     }

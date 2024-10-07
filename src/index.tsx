@@ -11,13 +11,13 @@ import {
     Modal,
     HStack
 } from '@ijstech/components';
-import { colors, Model } from './model';
+import { colors, IItem, Model } from './model';
 import { itemStyle, markerStyle, spinActionStyle, textCenterStyle, wheelStyle } from './index.css';
 const Theme = Styles.Theme.ThemeVars;
 
 interface ScomRandomPickerElement extends ControlElement {
     title?: string;
-    items?: { value: string; icon?: string }[];
+    items?: IItem[];
     size?: number;
 }
 
@@ -42,8 +42,6 @@ export default class ScomRandomPicker extends Module {
     private imgResult: Image;
     private lbResult: Label;
     private btnRemove: Button;
-
-    private currentDeg: number = 0;
 
     tag: any = {};
 
@@ -128,7 +126,7 @@ export default class ScomRandomPicker extends Module {
                     });
                 }
                 new Label(stack, {
-                    caption: item.value,
+                    caption: item.name,
                     overflow: 'hidden'
                 });
                 if (length === 2) {
@@ -168,15 +166,14 @@ export default class ScomRandomPicker extends Module {
     }
 
     private handleSpin() {
-        this.currentDeg += Math.floor(Math.random() * 360) + 360 * 5;
-        this.pnlItems.style.transform = 'rotate(' + this.currentDeg + 'deg)';
+        const { item, deg } = this.model.handleSpin();
+        this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
         this.btnSpin.enabled = false;
         this.pnlMarker.enabled = false;
         setTimeout(() => {
-            const item = this.model.getChoosenItem(this.currentDeg);
             this.btnSpin.enabled = true;
             this.pnlMarker.enabled = true;
-            this.lbResult.caption = item.value;
+            this.lbResult.caption = item.name;
             if (item.icon) {
                 this.imgResult.visible = true;
                 this.imgResult.url = item.icon;
@@ -190,8 +187,8 @@ export default class ScomRandomPicker extends Module {
 
     private handleRemoveChoice() {
         if (this.items.length > 2) {
-            const choosenItem = this.model.getChoosenItem(this.currentDeg);
-            const idx = this.items.findIndex(v => v.value === choosenItem.value);
+            const choosenItem = this.model.currentItem;
+            const idx = this.items.findIndex(v => v.name === choosenItem.name);
             this.items.splice(idx, 1);
             this.mdResult.visible = false;
             this.renderWheelPicker();

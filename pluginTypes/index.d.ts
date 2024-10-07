@@ -17,7 +17,7 @@ declare module "@scom/scom-random-picker/formSchema.ts" {
                     items: {
                         type: string;
                         properties: {
-                            value: {
+                            name: {
                                 type: string;
                                 required: boolean;
                             };
@@ -25,6 +25,11 @@ declare module "@scom/scom-random-picker/formSchema.ts" {
                                 type: string;
                                 format: string;
                                 title: string;
+                            };
+                            weight: {
+                                type: string;
+                                default: number;
+                                minimum: number;
                             };
                         };
                     };
@@ -56,7 +61,8 @@ declare module "@scom/scom-random-picker/data.json.ts" {
         defaultBuilderData: {
             size: number;
             items: {
-                value: string;
+                name: string;
+                weight: number;
             }[];
         };
     };
@@ -66,25 +72,29 @@ declare module "@scom/scom-random-picker/data.json.ts" {
 declare module "@scom/scom-random-picker/model.ts" {
     import { Module } from '@ijstech/components';
     export const colors: string[];
+    export interface IItem {
+        name: string;
+        icon?: string;
+        weight?: number;
+    }
     export interface IWheelPickerData {
         title?: string;
-        items: {
-            value: string;
-            icon?: string;
-        }[];
+        items: IItem[];
         size?: number;
     }
     export class Model {
-        private _data;
         private module;
+        private _data;
+        private _items;
+        private _currentItem;
+        private currentDeg;
         renderWheelPicker: () => void;
         constructor(module: Module);
         get title(): string;
         get size(): number;
-        get items(): {
-            value: string;
-            icon?: string;
-        }[];
+        get items(): IItem[];
+        get totalWeight(): number;
+        get currentItem(): IItem;
         getConfigurators(): {
             name: string;
             target: string;
@@ -102,9 +112,9 @@ declare module "@scom/scom-random-picker/model.ts" {
         private updateStyle;
         private updateTheme;
         private _getActions;
-        getChoosenItem(deg: number): {
-            value: string;
-            icon?: string;
+        handleSpin(): {
+            item: IItem;
+            deg: number;
         };
     }
 }
@@ -119,12 +129,10 @@ declare module "@scom/scom-random-picker/index.css.ts" {
 /// <amd-module name="@scom/scom-random-picker" />
 declare module "@scom/scom-random-picker" {
     import { Module, Container, ControlElement } from '@ijstech/components';
+    import { IItem } from "@scom/scom-random-picker/model.ts";
     interface ScomRandomPickerElement extends ControlElement {
         title?: string;
-        items?: {
-            value: string;
-            icon?: string;
-        }[];
+        items?: IItem[];
         size?: number;
     }
     global {
@@ -146,15 +154,11 @@ declare module "@scom/scom-random-picker" {
         private imgResult;
         private lbResult;
         private btnRemove;
-        private currentDeg;
         tag: any;
         static create(options?: ScomRandomPickerElement, parent?: Container): Promise<ScomRandomPicker>;
         get title(): string;
         get size(): number;
-        get items(): {
-            value: string;
-            icon?: string;
-        }[];
+        get items(): IItem[];
         getConfigurators(): {
             name: string;
             target: string;

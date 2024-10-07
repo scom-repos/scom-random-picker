@@ -25,7 +25,7 @@ define("@scom/scom-random-picker/formSchema.ts", ["require", "exports"], functio
                     items: {
                         type: 'object',
                         properties: {
-                            value: {
+                            name: {
                                 type: 'string',
                                 required: true
                             },
@@ -33,6 +33,11 @@ define("@scom/scom-random-picker/formSchema.ts", ["require", "exports"], functio
                                 type: 'string',
                                 format: 'data-url',
                                 title: 'Prize icon'
+                            },
+                            weight: {
+                                type: 'number',
+                                default: 1,
+                                minimum: 1
                             }
                         }
                     }
@@ -72,16 +77,20 @@ define("@scom/scom-random-picker/data.json.ts", ["require", "exports"], function
             size: 480,
             items: [
                 {
-                    value: 'OSWAP'
+                    name: 'OSWAP',
+                    weight: 1
                 },
                 {
-                    value: 'USDT'
+                    name: 'USDT',
+                    weight: 2
                 },
                 {
-                    value: 'BUSD'
+                    name: 'BUSD',
+                    weight: 1
                 },
                 {
-                    value: 'IF'
+                    name: 'IF',
+                    weight: 1
                 }
             ]
         }
@@ -96,6 +105,8 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
     class Model {
         constructor(module) {
             this._data = { items: [], size: SIZE };
+            this._items = [];
+            this.currentDeg = 0;
             this.module = module;
         }
         get title() {
@@ -107,7 +118,14 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
             return _size > smallerDimension ? smallerDimension : _size;
         }
         get items() {
-            return this._data.items || [];
+            return this._items;
+        }
+        get totalWeight() {
+            const totalWeight = this.items.reduce((total, item) => total + (item.weight || 1), 0);
+            return totalWeight;
+        }
+        get currentItem() {
+            return this._currentItem;
         }
         getConfigurators() {
             return [
@@ -142,6 +160,8 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
         }
         async setData(value) {
             this._data = value;
+            const array = value?.items || [];
+            this._items = [...array];
             this.renderWheelPicker();
         }
         getData() {
@@ -192,10 +212,31 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
             });
             return actions;
         }
-        getChoosenItem(deg) {
-            const length = this.items.length;
-            const idx = (Math.ceil(((deg - 90) % 360) / (360 / length) + 0.5) - 1) % length;
-            return this.items[idx];
+        handleSpin() {
+            const randomNum = Math.random() * this.totalWeight;
+            let cumulativeWeight = 0;
+            let chosenItem;
+            for (const item of this.items) {
+                cumulativeWeight += (item.weight || 1);
+                if (randomNum <= cumulativeWeight) {
+                    chosenItem = item;
+                    break;
+                }
+            }
+            this._currentItem = chosenItem;
+            let rounded = 0;
+            if (this.currentDeg) {
+                rounded = 360 - (this.currentDeg % 360);
+            }
+            const baseDeg = 360 * 5 + 90 + 360 * this.items.indexOf(chosenItem) / this.items.length;
+            const randomDeg = (Math.random() - 0.5) * (360 / this.items.length) * (1 - this.items.length * 0.01); // Prevent the arrow from pointing directly at the intersection point between the items
+            const resultDeg = baseDeg + randomDeg;
+            this.currentDeg += resultDeg;
+            const finalDeg = rounded + this.currentDeg;
+            return {
+                item: chosenItem,
+                deg: finalDeg
+            };
         }
     }
     exports.Model = Model;
@@ -210,6 +251,7 @@ define("@scom/scom-random-picker/index.css.ts", ["require", "exports", "@ijstech
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
+        zIndex: 1,
         width: '5rem',
         height: '5rem',
         display: 'flex',
@@ -236,6 +278,7 @@ define("@scom/scom-random-picker/index.css.ts", ["require", "exports", "@ijstech
         left: '50%',
         transform: 'translate(-50%, calc(-50% + 8px))',
         cursor: 'pointer',
+        zIndex: 1,
         $nest: {
             '&.disabled': {
                 opacity: 1,
@@ -253,7 +296,8 @@ define("@scom/scom-random-picker/index.css.ts", ["require", "exports", "@ijstech
     exports.itemStyle = components_1.Styles.style({
         width: '50%',
         position: 'absolute',
-        transformOrigin: 'center right'
+        transformOrigin: 'center right',
+        zIndex: 1
     });
     exports.textCenterStyle = components_1.Styles.style({
         textAlign: 'center'
@@ -266,7 +310,6 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
     let ScomRandomPicker = class ScomRandomPicker extends components_2.Module {
         constructor() {
             super(...arguments);
-            this.currentDeg = 0;
             this.tag = {};
         }
         static async create(options, parent) {
@@ -339,7 +382,7 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
                         });
                     }
                     new components_2.Label(stack, {
-                        caption: item.value,
+                        caption: item.name,
                         overflow: 'hidden'
                     });
                     if (length === 2) {
@@ -379,15 +422,14 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
             this.wheelContainer.height = size;
         }
         handleSpin() {
-            this.currentDeg += Math.floor(Math.random() * 360) + 360 * 5;
-            this.pnlItems.style.transform = 'rotate(' + this.currentDeg + 'deg)';
+            const { item, deg } = this.model.handleSpin();
+            this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
             this.btnSpin.enabled = false;
             this.pnlMarker.enabled = false;
             setTimeout(() => {
-                const item = this.model.getChoosenItem(this.currentDeg);
                 this.btnSpin.enabled = true;
                 this.pnlMarker.enabled = true;
-                this.lbResult.caption = item.value;
+                this.lbResult.caption = item.name;
                 if (item.icon) {
                     this.imgResult.visible = true;
                     this.imgResult.url = item.icon;
@@ -401,8 +443,8 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
         }
         handleRemoveChoice() {
             if (this.items.length > 2) {
-                const choosenItem = this.model.getChoosenItem(this.currentDeg);
-                const idx = this.items.findIndex(v => v.value === choosenItem.value);
+                const choosenItem = this.model.currentItem;
+                const idx = this.items.findIndex(v => v.name === choosenItem.name);
                 this.items.splice(idx, 1);
                 this.mdResult.visible = false;
                 this.renderWheelPicker();

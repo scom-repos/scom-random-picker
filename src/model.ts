@@ -4,15 +4,23 @@ import configData from './data.json';
 const SIZE = 480;
 export const colors = ['#afa939', '#2b580c', '#ff0000', '#800080', '#FFA500'];
 
+export interface IItem {
+  name: string;
+  icon?: string;
+  weight?: number;
+}
 export interface IWheelPickerData {
   title?: string;
-  items: { value: string; icon?: string }[];
+  items: IItem[];
   size?: number;
 }
 
 export class Model {
-  private _data: IWheelPickerData = { items: [], size: SIZE };
   private module: Module;
+  private _data: IWheelPickerData = { items: [], size: SIZE };
+  private _items: IItem[] = [];
+  private _currentItem: IItem;
+  private currentDeg: number = 0;
   renderWheelPicker: () => void;
 
   constructor(module: Module) {
@@ -30,7 +38,16 @@ export class Model {
   }
 
   get items() {
-    return this._data.items || [];
+    return this._items;
+  }
+
+  get totalWeight() {
+    const totalWeight = this.items.reduce((total, item) => total + (item.weight || 1), 0);
+    return totalWeight;
+  }
+
+  get currentItem() {
+    return this._currentItem;
   }
 
   getConfigurators() {
@@ -67,6 +84,8 @@ export class Model {
 
   async setData(value: IWheelPickerData) {
     this._data = value;
+    const array = value?.items || [];
+    this._items = [...array];
     this.renderWheelPicker();
   }
 
@@ -124,9 +143,32 @@ export class Model {
     return actions;
   }
 
-  getChoosenItem(deg: number) {
-    const length = this.items.length;
-    const idx = (Math.ceil(((deg - 90) % 360) / (360 / length) + 0.5) - 1) % length;
-    return this.items[idx];
+  handleSpin() {
+    const randomNum = Math.random() * this.totalWeight;
+    let cumulativeWeight = 0;
+    let chosenItem: IItem;
+    for (const item of this.items) {
+      cumulativeWeight += (item.weight || 1);
+      if (randomNum <= cumulativeWeight) {
+        chosenItem = item;
+        break;
+      }
+    }
+    this._currentItem = chosenItem;
+
+    let rounded = 0;
+    if (this.currentDeg) {
+      rounded = 360 - (this.currentDeg % 360);
+    }
+    const baseDeg = 360 * 5 + 90 + 360 * this.items.indexOf(chosenItem) / this.items.length;
+    const randomDeg = (Math.random() - 0.5) * (360 / this.items.length) * (1 - this.items.length * 0.01); // Prevent the arrow from pointing directly at the intersection point between the items
+    const resultDeg = baseDeg + randomDeg;
+    this.currentDeg += resultDeg;
+    const finalDeg = rounded + this.currentDeg;
+
+    return {
+      item: chosenItem,
+      deg: finalDeg
+    };
   }
 }
