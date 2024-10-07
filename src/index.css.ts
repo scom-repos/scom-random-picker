@@ -6,6 +6,7 @@ export const spinActionStyle = Styles.style({
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
+  zIndex: 1,
   width: '5rem',
   height: '5rem',
   display: 'flex',
@@ -33,6 +34,7 @@ export const markerStyle = Styles.style({
   left: '50%',
   transform: 'translate(-50%, calc(-50% + 8px))',
   cursor: 'pointer',
+  zIndex: 1,
   $nest: {
     '&.disabled': {
       opacity: 1,
@@ -52,7 +54,8 @@ export const wheelStyle = Styles.style({
 export const itemStyle = Styles.style({
   width: '50%',
   position: 'absolute',
-  transformOrigin: 'center right'
+  transformOrigin: 'center right',
+  zIndex: 1
 })
 
 export const textCenterStyle = Styles.style({
