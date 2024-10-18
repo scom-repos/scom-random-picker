@@ -1,7 +1,7 @@
 export default {
   "defaultBuilderData": {
     size: 480,
-    items: [
+    rewards: [
       {
         name: 'OSWAP',
         weight: 1

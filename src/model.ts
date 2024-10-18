@@ -12,15 +12,16 @@ export interface IItem {
 
 export interface IWheelPickerData {
   title?: string;
-  items: IItem[];
+  rewards: IItem[];
   size?: number;
 }
 
 export class Model {
   private module: Module;
-  private _data: IWheelPickerData = { items: [], size: SIZE };
-  private _items: IItem[] = [];
+  private _data: IWheelPickerData = { rewards: [], size: SIZE };
+  private _rewards: IItem[] = [];
   private _currentItem: IItem;
+  private _enabled: boolean;
   private currentDeg: number = 0;
   renderWheelPicker: () => void;
 
@@ -38,17 +39,25 @@ export class Model {
     return _size > smallerDimension ? smallerDimension : _size;
   }
 
-  get items() {
-    return this._items;
+  get rewards() {
+    return this._rewards;
   }
 
   get totalWeight() {
-    const totalWeight = this.items.reduce((total, item) => total + item.weight, 0);
+    const totalWeight = this.rewards.reduce((total, item) => total + item.weight, 0);
     return totalWeight;
   }
 
   get currentItem() {
     return this._currentItem;
+  }
+
+  get enabled() {
+    return this._enabled || false;
+  }
+
+  set enabled(value: boolean) {
+    this._enabled = value;
   }
 
   getConfigurators() {
@@ -85,8 +94,8 @@ export class Model {
 
   async setData(value: IWheelPickerData) {
     this._data = value;
-    const array = value?.items || [];
-    this._items = [...array].map(v => {
+    const array = value?.rewards || [];
+    this._rewards = [...array].map(v => {
       return {
         ...v,
         weight: v.weight || 1
@@ -149,15 +158,17 @@ export class Model {
     return actions;
   }
 
-  handleSpin() {
-    const randomNum = Math.random() * this.totalWeight;
-    let cumulativeWeight = 0;
-    let chosenItem: IItem;
-    for (const item of this.items) {
-      cumulativeWeight += item.weight;
-      if (randomNum <= cumulativeWeight) {
-        chosenItem = item;
-        break;
+  handleSpin(reward?: IItem) {
+    let chosenItem: IItem = reward;
+    if (!chosenItem) {
+      const randomNum = Math.random() * this.totalWeight;
+      let cumulativeWeight = 0;
+      for (const item of this.rewards) {
+        cumulativeWeight += item.weight;
+        if (randomNum <= cumulativeWeight) {
+          chosenItem = item;
+          break;
+        }
       }
     }
     this._currentItem = chosenItem;
@@ -167,15 +178,15 @@ export class Model {
       rounded = 360 - (this.currentDeg % 360);
     }
     const degPerPart = 360 / this.totalWeight;
-    const idx = this.items.indexOf(chosenItem);
+    const idx = this.rewards.indexOf(chosenItem);
     let adjustedDeg = 0;
     if (idx !== 0) {
       const halfDegPerPart = degPerPart / 2;
       const addedDeg = halfDegPerPart * (weight - 1);
-      const removedDeg = halfDegPerPart * (this.items[0].weight - 1);
+      const removedDeg = halfDegPerPart * (this.rewards[0].weight - 1);
       adjustedDeg = addedDeg - removedDeg;
     }
-    const startWeight = (idx > 0) ? this.items.slice(0, idx).reduce((acc, val) => acc + val.weight, 0) : 0;
+    const startWeight = (idx > 0) ? this.rewards.slice(0, idx).reduce((acc, val) => acc + val.weight, 0) : 0;
     const baseDeg = 90 + 360 * 5 + adjustedDeg + (degPerPart * startWeight);
     const randomDeg = (Math.random() - 0.5) * (degPerPart * weight);
     // Prevent the arrow from pointing directly at the intersection point between the items
