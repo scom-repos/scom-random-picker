@@ -20,7 +20,7 @@ define("@scom/scom-random-picker/formSchema.ts", ["require", "exports"], functio
                     type: 'number',
                     minimum: 100
                 },
-                items: {
+                rewards: {
                     type: 'array',
                     items: {
                         type: 'object',
@@ -57,7 +57,7 @@ define("@scom/scom-random-picker/formSchema.ts", ["require", "exports"], functio
                 },
                 {
                     type: 'Control',
-                    scope: '#/properties/items',
+                    scope: '#/properties/rewards',
                     options: {
                         detail: {
                             type: 'VerticalLayout'
@@ -75,7 +75,7 @@ define("@scom/scom-random-picker/data.json.ts", ["require", "exports"], function
     exports.default = {
         "defaultBuilderData": {
             size: 480,
-            items: [
+            rewards: [
                 {
                     name: 'OSWAP',
                     weight: 1
@@ -104,8 +104,8 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
     exports.colors = ['#afa939', '#2b580c', '#ff0000', '#800080', '#FFA500'];
     class Model {
         constructor(module) {
-            this._data = { items: [], size: SIZE };
-            this._items = [];
+            this._data = { rewards: [], size: SIZE };
+            this._rewards = [];
             this.currentDeg = 0;
             this.module = module;
         }
@@ -117,15 +117,21 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
             const _size = this._data.size || SIZE;
             return _size > smallerDimension ? smallerDimension : _size;
         }
-        get items() {
-            return this._items;
+        get rewards() {
+            return this._rewards;
         }
         get totalWeight() {
-            const totalWeight = this.items.reduce((total, item) => total + item.weight, 0);
+            const totalWeight = this.rewards.reduce((total, item) => total + item.weight, 0);
             return totalWeight;
         }
         get currentItem() {
             return this._currentItem;
+        }
+        get enabled() {
+            return this._enabled || false;
+        }
+        set enabled(value) {
+            this._enabled = value;
         }
         getConfigurators() {
             return [
@@ -160,8 +166,8 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
         }
         async setData(value) {
             this._data = value;
-            const array = value?.items || [];
-            this._items = [...array].map(v => {
+            const array = value?.rewards || [];
+            this._rewards = [...array].map(v => {
                 return {
                     ...v,
                     weight: v.weight || 1
@@ -217,15 +223,17 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
             });
             return actions;
         }
-        handleSpin() {
-            const randomNum = Math.random() * this.totalWeight;
-            let cumulativeWeight = 0;
-            let chosenItem;
-            for (const item of this.items) {
-                cumulativeWeight += item.weight;
-                if (randomNum <= cumulativeWeight) {
-                    chosenItem = item;
-                    break;
+        handleSpin(reward) {
+            let chosenItem = reward;
+            if (!chosenItem) {
+                const randomNum = Math.random() * this.totalWeight;
+                let cumulativeWeight = 0;
+                for (const item of this.rewards) {
+                    cumulativeWeight += item.weight;
+                    if (randomNum <= cumulativeWeight) {
+                        chosenItem = item;
+                        break;
+                    }
                 }
             }
             this._currentItem = chosenItem;
@@ -235,15 +243,15 @@ define("@scom/scom-random-picker/model.ts", ["require", "exports", "@scom/scom-r
                 rounded = 360 - (this.currentDeg % 360);
             }
             const degPerPart = 360 / this.totalWeight;
-            const idx = this.items.indexOf(chosenItem);
+            const idx = this.rewards.indexOf(chosenItem);
             let adjustedDeg = 0;
             if (idx !== 0) {
                 const halfDegPerPart = degPerPart / 2;
                 const addedDeg = halfDegPerPart * (weight - 1);
-                const removedDeg = halfDegPerPart * (this.items[0].weight - 1);
+                const removedDeg = halfDegPerPart * (this.rewards[0].weight - 1);
                 adjustedDeg = addedDeg - removedDeg;
             }
-            const startWeight = (idx > 0) ? this.items.slice(0, idx).reduce((acc, val) => acc + val.weight, 0) : 0;
+            const startWeight = (idx > 0) ? this.rewards.slice(0, idx).reduce((acc, val) => acc + val.weight, 0) : 0;
             const baseDeg = 90 + 360 * 5 + adjustedDeg + (degPerPart * startWeight);
             const randomDeg = (Math.random() - 0.5) * (degPerPart * weight);
             // Prevent the arrow from pointing directly at the intersection point between the items
@@ -342,8 +350,18 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
         get size() {
             return this.model.size;
         }
-        get items() {
-            return this.model.items;
+        get rewards() {
+            return this.model.rewards;
+        }
+        get enabled() {
+            return this.model.enabled;
+        }
+        set enabled(value) {
+            this.model.enabled = value;
+            if (this.btnSpin) {
+                this.btnSpin.enabled = value;
+                this.pnlMarker.enabled = value;
+            }
         }
         getConfigurators() {
             this.initModel();
@@ -372,13 +390,13 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
             this.lbTitle.visible = !!this.title;
             this.wheelContainer.width = this.size;
             this.wheelContainer.height = this.size;
-            const length = this.items.length;
+            const length = this.rewards.length;
             if (length > 1) {
                 const nodeItems = [];
                 const degPerPart = 360 / this.model.totalWeight;
                 let removedDeg = 0;
                 for (let i = 0; i < length; i++) {
-                    const { name, weight, icon } = this.items[i];
+                    const { name, weight, icon } = this.rewards[i];
                     const _weight = (weight || 1);
                     const deg = degPerPart * _weight;
                     const pnl = new components_2.Panel();
@@ -407,7 +425,7 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
                         caption: name,
                         overflow: 'hidden'
                     });
-                    if (length === 2 && this.items[0].weight === this.items[1].weight) {
+                    if (length === 2 && this.rewards[0].weight === this.rewards[1].weight) {
                         pnl.height = '100%';
                         pnl.style.transform = 'rotate(' + (i * deg) + 'deg)';
                     }
@@ -436,7 +454,7 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
                 this.wheelContainer.visible = true;
                 this.btnSpin.enabled = true;
                 this.lbEmpty.visible = false;
-                this.btnRemove.visible = length > 2;
+                // this.btnRemove.visible = length > 2;
                 this.resizeWheelPicker();
             }
             else {
@@ -455,11 +473,17 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
             this.wheelContainer.width = size;
             this.wheelContainer.height = size;
         }
-        handleSpin() {
-            const { item, deg } = this.model.handleSpin();
-            this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
+        async handleSpin() {
+            if (!this.enabled)
+                return;
+            let reward;
             this.btnSpin.enabled = false;
             this.pnlMarker.enabled = false;
+            if (this.onSpin) {
+                reward = await this.onSpin();
+            }
+            const { item, deg } = this.model.handleSpin(reward);
+            this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
             setTimeout(() => {
                 this.btnSpin.enabled = true;
                 this.pnlMarker.enabled = true;
@@ -471,15 +495,15 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
                 else {
                     this.imgResult.visible = false;
                 }
-                this.btnRemove.visible = this.items.length > 2;
+                // this.btnRemove.visible = this.rewards.length > 2;
                 this.mdResult.visible = true;
             }, 3000);
         }
         handleRemoveChoice() {
-            if (this.items.length > 2) {
+            if (this.rewards.length > 2) {
                 const choosenItem = this.model.currentItem;
-                const idx = this.items.findIndex(v => v.name === choosenItem.name);
-                this.items.splice(idx, 1);
+                const idx = this.rewards.findIndex(v => v.name === choosenItem.name);
+                this.rewards.splice(idx, 1);
                 this.mdResult.visible = false;
                 this.renderWheelPicker();
             }
@@ -490,13 +514,18 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
         async init() {
             this.initModel();
             super.init();
+            this.onSpin = this.getAttribute('onSpin', true) || this.onSpin;
+            const enabled = this.getAttribute('enabled', true);
+            if (enabled !== null && enabled !== undefined) {
+                this.enabled = enabled;
+            }
             const lazyLoad = this.getAttribute('lazyLoad', true, false);
             if (!lazyLoad) {
                 const title = this.getAttribute('title', true);
                 const size = this.getAttribute('size', true);
-                const items = this.getAttribute('items', true);
-                if (items) {
-                    this.setData({ title, size, items });
+                const rewards = this.getAttribute('rewards', true);
+                if (rewards) {
+                    this.setData({ title, size, rewards });
                 }
             }
             window.addEventListener('resize', () => { this.resizeWheelPicker(); });
@@ -515,7 +544,7 @@ define("@scom/scom-random-picker", ["require", "exports", "@ijstech/components",
                         this.$render("i-image", { id: "imgResult", width: 64, height: "auto", maxWidth: "60%" }),
                         this.$render("i-label", { id: "lbResult", font: { size: '2rem', bold: true, color: Theme.colors.primary.main } }),
                         this.$render("i-hstack", { gap: "1rem", margin: { top: '2rem' }, verticalAlignment: "center", horizontalAlignment: "center", wrap: "wrap" },
-                            this.$render("i-button", { id: "btnRemove", width: 120, height: 32, caption: "Remove Choice", border: { radius: 5 }, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.5rem', right: '0.5rem' }, background: { color: Theme.colors.secondary.main }, font: { color: Theme.colors.secondary.contrastText }, onClick: this.handleRemoveChoice }),
+                            this.$render("i-button", { id: "btnRemove", visible: false, width: 120, height: 32, caption: "Remove Choice", border: { radius: 5 }, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.5rem', right: '0.5rem' }, background: { color: Theme.colors.secondary.main }, font: { color: Theme.colors.secondary.contrastText }, onClick: this.handleRemoveChoice }),
                             this.$render("i-button", { width: 120, height: 32, caption: "Done", border: { radius: 5 }, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.5rem', right: '0.5rem' }, font: { color: Theme.colors.primary.contrastText }, onClick: this.handleCloseModal }))))));
         }
     };

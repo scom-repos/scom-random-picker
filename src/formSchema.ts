@@ -10,7 +10,7 @@ export default {
                 type: 'number',
                 minimum: 100
             },
-            items: {
+            rewards: {
                 type: 'array',
                 items: {
                     type: 'object',
@@ -47,7 +47,7 @@ export default {
             },
             {
                 type: 'Control',
-                scope: '#/properties/items',
+                scope: '#/properties/rewards',
                 options: {
                     detail: {
                         type: 'VerticalLayout'

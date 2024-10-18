@@ -12,7 +12,7 @@ declare module "@scom/scom-random-picker/formSchema.ts" {
                     type: string;
                     minimum: number;
                 };
-                items: {
+                rewards: {
                     type: string;
                     items: {
                         type: string;
@@ -60,7 +60,7 @@ declare module "@scom/scom-random-picker/data.json.ts" {
     const _default_1: {
         defaultBuilderData: {
             size: number;
-            items: {
+            rewards: {
                 name: string;
                 weight: number;
             }[];
@@ -79,22 +79,25 @@ declare module "@scom/scom-random-picker/model.ts" {
     }
     export interface IWheelPickerData {
         title?: string;
-        items: IItem[];
+        rewards: IItem[];
         size?: number;
     }
     export class Model {
         private module;
         private _data;
-        private _items;
+        private _rewards;
         private _currentItem;
+        private _enabled;
         private currentDeg;
         renderWheelPicker: () => void;
         constructor(module: Module);
         get title(): string;
         get size(): number;
-        get items(): IItem[];
+        get rewards(): IItem[];
         get totalWeight(): number;
         get currentItem(): IItem;
+        get enabled(): boolean;
+        set enabled(value: boolean);
         getConfigurators(): {
             name: string;
             target: string;
@@ -112,7 +115,7 @@ declare module "@scom/scom-random-picker/model.ts" {
         private updateStyle;
         private updateTheme;
         private _getActions;
-        handleSpin(): {
+        handleSpin(reward?: IItem): {
             item: IItem;
             deg: number;
         };
@@ -129,11 +132,12 @@ declare module "@scom/scom-random-picker/index.css.ts" {
 /// <amd-module name="@scom/scom-random-picker" />
 declare module "@scom/scom-random-picker" {
     import { Module, Container, ControlElement } from '@ijstech/components';
-    import { IItem } from "@scom/scom-random-picker/model.ts";
+    import { IItem, IWheelPickerData } from "@scom/scom-random-picker/model.ts";
     interface ScomRandomPickerElement extends ControlElement {
         title?: string;
-        items?: IItem[];
+        rewards?: IItem[];
         size?: number;
+        onSpin?: () => Promise<IItem>;
     }
     global {
         namespace JSX {
@@ -154,11 +158,14 @@ declare module "@scom/scom-random-picker" {
         private imgResult;
         private lbResult;
         private btnRemove;
+        onSpin: () => Promise<IItem>;
         tag: any;
         static create(options?: ScomRandomPickerElement, parent?: Container): Promise<ScomRandomPicker>;
         get title(): string;
         get size(): number;
-        get items(): IItem[];
+        get rewards(): IItem[];
+        get enabled(): boolean;
+        set enabled(value: boolean);
         getConfigurators(): {
             name: string;
             target: string;
@@ -168,8 +175,8 @@ declare module "@scom/scom-random-picker" {
             getTag: any;
             setTag: any;
         }[];
-        setData(value: any): Promise<void>;
-        getData(): import("@scom/scom-random-picker/model.ts").IWheelPickerData;
+        setData(value: IWheelPickerData): Promise<void>;
+        getData(): IWheelPickerData;
         getTag(): any;
         setTag(value: any): void;
         private initModel;

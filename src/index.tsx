@@ -11,15 +11,16 @@ import {
     Modal,
     HStack
 } from '@ijstech/components';
-import { colors, IItem, Model } from './model';
+import { colors, IItem, IWheelPickerData, Model } from './model';
 import { itemStyle, markerStyle, spinActionStyle, textCenterStyle, wheelStyle } from './index.css';
 const Theme = Styles.Theme.ThemeVars;
 const MAX_HEIGHT = 1000;
 
 interface ScomRandomPickerElement extends ControlElement {
     title?: string;
-    items?: IItem[];
+    rewards?: IItem[];
     size?: number;
+    onSpin?: () => Promise<IItem>;
 }
 
 declare global {
@@ -43,6 +44,7 @@ export default class ScomRandomPicker extends Module {
     private imgResult: Image;
     private lbResult: Label;
     private btnRemove: Button;
+    public onSpin: () => Promise<IItem>;
 
     tag: any = {};
 
@@ -60,8 +62,20 @@ export default class ScomRandomPicker extends Module {
         return this.model.size;
     }
 
-    get items() {
-        return this.model.items;
+    get rewards() {
+        return this.model.rewards;
+    }
+
+    get enabled() {
+        return this.model.enabled;
+    }
+
+    set enabled(value: boolean) {
+        this.model.enabled = value;
+        if (this.btnSpin) {
+            this.btnSpin.enabled = value;
+            this.pnlMarker.enabled = value;
+        }
     }
 
     getConfigurators() {
@@ -69,7 +83,7 @@ export default class ScomRandomPicker extends Module {
         return this.model.getConfigurators();
     }
 
-    async setData(value: any) {
+    async setData(value: IWheelPickerData) {
         this.model.setData(value);
     }
 
@@ -98,13 +112,13 @@ export default class ScomRandomPicker extends Module {
         this.wheelContainer.width = this.size;
         this.wheelContainer.height = this.size;
 
-        const length = this.items.length;
+        const length = this.rewards.length;
         if (length > 1) {
             const nodeItems: HTMLElement[] = [];
             const degPerPart = 360 / this.model.totalWeight;
             let removedDeg = 0;
             for (let i = 0; i < length; i++) {
-                const { name, weight, icon } = this.items[i];
+                const { name, weight, icon } = this.rewards[i];
                 const _weight = (weight || 1);
                 const deg = degPerPart * _weight;
                 const pnl = new Panel();
@@ -133,7 +147,7 @@ export default class ScomRandomPicker extends Module {
                     caption: name,
                     overflow: 'hidden'
                 });
-                if (length === 2 && this.items[0].weight === this.items[1].weight) {
+                if (length === 2 && this.rewards[0].weight === this.rewards[1].weight) {
                     pnl.height = '100%';
                     pnl.style.transform = 'rotate(' + (i * deg) + 'deg)';
                 } else {
@@ -160,7 +174,7 @@ export default class ScomRandomPicker extends Module {
             this.wheelContainer.visible = true;
             this.btnSpin.enabled = true;
             this.lbEmpty.visible = false;
-            this.btnRemove.visible = length > 2;
+            // this.btnRemove.visible = length > 2;
             this.resizeWheelPicker();
         } else {
             this.wheelContainer.visible = false;
@@ -180,11 +194,16 @@ export default class ScomRandomPicker extends Module {
         this.wheelContainer.height = size;
     }
 
-    private handleSpin() {
-        const { item, deg } = this.model.handleSpin();
-        this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
+    private async handleSpin() {
+        if (!this.enabled) return;
+        let reward: IItem;
         this.btnSpin.enabled = false;
         this.pnlMarker.enabled = false;
+        if (this.onSpin) {
+            reward = await this.onSpin();
+        }
+        const { item, deg } = this.model.handleSpin(reward);
+        this.pnlItems.style.transform = 'rotate(' + deg + 'deg)';
         setTimeout(() => {
             this.btnSpin.enabled = true;
             this.pnlMarker.enabled = true;
@@ -195,16 +214,16 @@ export default class ScomRandomPicker extends Module {
             } else {
                 this.imgResult.visible = false;
             }
-            this.btnRemove.visible = this.items.length > 2;
+            // this.btnRemove.visible = this.rewards.length > 2;
             this.mdResult.visible = true;
         }, 3000);
     }
 
     private handleRemoveChoice() {
-        if (this.items.length > 2) {
+        if (this.rewards.length > 2) {
             const choosenItem = this.model.currentItem;
-            const idx = this.items.findIndex(v => v.name === choosenItem.name);
-            this.items.splice(idx, 1);
+            const idx = this.rewards.findIndex(v => v.name === choosenItem.name);
+            this.rewards.splice(idx, 1);
             this.mdResult.visible = false;
             this.renderWheelPicker();
         }
@@ -217,13 +236,18 @@ export default class ScomRandomPicker extends Module {
     async init() {
         this.initModel();
         super.init();
+        this.onSpin = this.getAttribute('onSpin', true) || this.onSpin;
+        const enabled = this.getAttribute('enabled', true);
+        if (enabled !== null && enabled !== undefined) {
+            this.enabled = enabled;
+        }
         const lazyLoad = this.getAttribute('lazyLoad', true, false);
         if (!lazyLoad) {
             const title = this.getAttribute('title', true);
             const size = this.getAttribute('size', true);
-            const items = this.getAttribute('items', true);
-            if (items) {
-                this.setData({ title, size, items });
+            const rewards = this.getAttribute('rewards', true);
+            if (rewards) {
+                this.setData({ title, size, rewards });
             }
         }
 
@@ -280,6 +304,7 @@ export default class ScomRandomPicker extends Module {
                         <i-hstack gap="1rem" margin={{ top: '2rem' }} verticalAlignment="center" horizontalAlignment="center" wrap="wrap">
                             <i-button
                                 id="btnRemove"
+                                visible={false}
                                 width={120}
                                 height={32}
                                 caption="Remove Choice"
